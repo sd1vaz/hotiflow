@@ -29,10 +29,10 @@ export default function Login({ users, onLogin }: LoginProps) {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md px-2"
       >
         <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-emerald-500/10 overflow-hidden border border-emerald-100">
-          <div className="bg-emerald-500 p-10 flex flex-col items-center">
+          <div className="bg-emerald-500 p-8 md:p-10 flex flex-col items-center">
             <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center text-emerald-500 shadow-xl mb-6">
               <Leaf size={46} />
             </div>

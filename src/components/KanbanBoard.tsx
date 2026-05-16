@@ -92,10 +92,11 @@ interface KanbanBoardProps {
   currentUser: User;
   users: AuthUser[];
   onRegisterUser: (newUser: AuthUser) => void;
+  onDeleteUser: (userId: string) => void;
   onLogout: () => void;
 }
 
-export default function KanbanBoard({ currentUser, users, onRegisterUser, onLogout }: KanbanBoardProps) {
+export default function KanbanBoard({ currentUser, users, onRegisterUser, onDeleteUser, onLogout }: KanbanBoardProps) {
   const [columns, setColumns] = useState<ColumnType[]>(INITIAL_DATA);
   const [searchTerm, setSearchTerm] = useState('');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -126,17 +127,68 @@ export default function KanbanBoard({ currentUser, users, onRegisterUser, onLogo
     })));
   };
 
-  const updateOrderFile = (orderId: string, type: 'pdf' | 'photo') => {
-    setColumns(prev => prev.map(col => ({
-      ...col,
-      orders: col.orders.map(order => {
-        if (order.id !== orderId) return order;
-        if (type === 'pdf') {
-          return { ...order, pdfUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' };
+  const updateOrderFile = async (orderId: string, type: 'pdf' | 'preparing-photo' | 'delivery-photo', file?: File) => {
+    if (type === 'pdf') {
+      if (!file) return;
+      const localUrl = URL.createObjectURL(file);
+      setColumns(prev => prev.map(col => ({
+        ...col,
+        orders: col.orders.map(order => {
+          if (order.id !== orderId) return order;
+          return { ...order, pdfUrl: localUrl };
+        })
+      })));
+      return;
+    }
+
+    if (!file) return;
+
+    // Convert file to base64
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Data = reader.result as string;
+      
+      // Update UI immediately with the local URL
+      const localUrl = URL.createObjectURL(file);
+      
+      setColumns(prev => prev.map(col => ({
+        ...col,
+        orders: col.orders.map(order => {
+          if (order.id !== orderId) return order;
+          if (type === 'preparing-photo') return { ...order, preparingPhotoUrl: localUrl };
+          return { ...order, deliveryPhotoUrl: localUrl };
+        })
+      })));
+
+      // Call AI to count boxes
+      try {
+        const response = await fetch('/api/ai/analyze-boxes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData: base64Data, mimeType: file.type })
+        });
+        
+        const data = await response.json();
+        
+        if (data.count !== undefined) {
+          setColumns(prev => prev.map(col => ({
+            ...col,
+            orders: col.orders.map(order => {
+              if (order.id !== orderId) return order;
+              if (type === 'preparing-photo') {
+                return { ...order, boxCountPreparing: data.count };
+              } else {
+                const isError = order.boxCountPreparing !== undefined && order.boxCountPreparing !== data.count;
+                return { ...order, boxCountDelivered: data.count, aiError: isError };
+              }
+            })
+          })));
         }
-        return { ...order, deliveryPhotoUrl: 'https://images.unsplash.com/photo-1518843875459-f738682238a6?auto=format&fit=crop&q=80&w=200' };
-      })
-    })));
+      } catch (error) {
+        console.error("AI Analysis failed:", error);
+      }
+    };
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -155,9 +207,15 @@ export default function KanbanBoard({ currentUser, users, onRegisterUser, onLogo
     const finishCol = columns.find(c => c.id === destination.droppableId)!;
     const movedOrder = startCol.orders[source.index];
 
+    // RESTRICTION: Block move to Delivery if no preparing photo
+    if (destination.droppableId === 'delivery' && source.droppableId === 'preparing' && !movedOrder.preparingPhotoUrl) {
+      alert('⚠️ Erro: É obrigatório anexar uma foto do pedido separado antes de iniciar a rota de entrega.');
+      return;
+    }
+
     // RESTRICTION: Check for photo before delivery
     if (destination.droppableId === 'delivered' && !movedOrder.deliveryPhotoUrl) {
-      alert('⚠️ Erro: É necessário anexar uma foto de comprovação antes de marcar como entregue.');
+      alert('⚠️ Erro: É necessário anexar uma foto de comprovação na entrega.');
       return;
     }
 
@@ -209,30 +267,49 @@ export default function KanbanBoard({ currentUser, users, onRegisterUser, onLogo
   return (
     <div className="h-screen flex flex-col bg-brand-bg overflow-hidden font-sans">
       {/* Header */}
-      <nav className="h-20 bg-white border-b-4 border-emerald-500/20 px-8 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
-            <span className="text-2xl">🍎</span>
+      <nav className="h-auto md:h-20 bg-white border-b-4 border-emerald-500/20 px-4 md:px-8 py-4 md:py-0 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 px-8">
+        <div className="flex items-center justify-between w-full md:w-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
+              <span className="text-xl md:text-2xl">🍎</span>
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-black text-emerald-900 tracking-tight leading-none">HortiFlow</h1>
+              <p className="text-[8px] md:text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] mt-1">Gestão de Pedidos Frescos</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-emerald-900 tracking-tight leading-none">HortiFlow</h1>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] mt-1">Gestão de Pedidos Frescos</p>
+          
+          <div className="flex md:hidden gap-2">
+            {currentUser.role === 'admin' && (
+              <button 
+                onClick={() => setIsUserModalOpen(true)}
+                className="bg-slate-100 text-slate-500 p-2 rounded-full"
+              >
+                <Users size={18} />
+              </button>
+            )}
+            <button 
+              onClick={onLogout}
+              className="bg-rose-50 text-rose-500 p-2 rounded-full"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center relative mr-2">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full md:w-auto">
+          <div className="flex items-center relative flex-1 md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
               placeholder="Buscar pedido..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-slate-50 border border-slate-100 rounded-full py-1.5 pl-9 pr-4 w-48 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              className="bg-slate-50 border border-slate-100 rounded-full py-2 md:py-1.5 pl-9 pr-4 w-full text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
             />
           </div>
           
-          <div className="flex gap-4 items-center">
+          <div className="hidden md:flex gap-4 items-center">
             <div className="flex flex-col items-end mr-2">
               <span className="text-[11px] font-black text-slate-800 leading-none uppercase tracking-tight">{currentUser.name}</span>
               <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{currentUser.role === 'admin' ? 'Administrador' : 'Funcionário'}</span>
@@ -272,19 +349,30 @@ export default function KanbanBoard({ currentUser, users, onRegisterUser, onLogo
       </nav>
 
       {/* Board */}
-      <main className="flex-1 p-6 flex gap-6 overflow-x-auto kanban-scroll bg-[radial-gradient(#d1fae5_1px,transparent_1px)] [background-size:32px_32px]">
+      <main className="flex-1 p-4 md:p-6 flex gap-4 md:gap-6 overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none kanban-scroll bg-[radial-gradient(#d1fae5_1px,transparent_1px)] [background-size:32px_32px]">
         <DragDropContext onDragEnd={onDragEnd}>
           {filteredColumns.map((column: ColumnType) => (
-            <Column 
-              key={column.id} 
-              column={column} 
-              onUpdateFile={updateOrderFile}
-              onDeleteOrder={deleteOrder}
-              currentUser={currentUser}
-            />
+            <div key={column.id} className="snap-center h-full">
+              <Column 
+                column={column} 
+                onUpdateFile={updateOrderFile}
+                onDeleteOrder={deleteOrder}
+                currentUser={currentUser}
+              />
+            </div>
           ))}
         </DragDropContext>
       </main>
+
+      {/* Mobile Floating Action Button */}
+      {currentUser.role === 'admin' && (
+        <button 
+          onClick={() => setIsOrderModalOpen(true)}
+          className="md:hidden fixed bottom-16 right-6 w-14 h-14 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-2xl shadow-emerald-400 z-40 active:scale-90"
+        >
+          <Plus size={28} strokeWidth={3} />
+        </button>
+      )}
       
       {/* Footer Info */}
       <footer className="h-12 bg-brand-dark px-8 flex items-center justify-between shrink-0">
@@ -303,6 +391,7 @@ export default function KanbanBoard({ currentUser, users, onRegisterUser, onLogo
         onClose={() => setIsUserModalOpen(false)} 
         users={users}
         onRegister={onRegisterUser}
+        onDelete={onDeleteUser}
       />
 
       <NewOrderModal

@@ -72,7 +72,7 @@ export default function NewOrderModal({ isOpen, onClose, onSubmit, currentUser }
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden"
+              className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
             >
               <div className="bg-emerald-500 p-8 text-white flex items-center gap-4">
                 <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">

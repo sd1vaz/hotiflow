@@ -21,6 +21,10 @@ export default function App() {
     setUsers(prev => [...prev, newUser]);
   };
 
+  const handleDeleteUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
   if (!currentUser) {
     return <Login users={users} onLogin={setCurrentUser} />;
   }
@@ -31,6 +35,7 @@ export default function App() {
         currentUser={currentUser} 
         users={users}
         onRegisterUser={handleRegisterUser}
+        onDeleteUser={handleDeleteUser}
         onLogout={() => setCurrentUser(null)} 
       />
     </div>

@@ -2,5 +2,5 @@
   "name": "HortiBoard - Gestão de Pedidos",
   "description": "Sistema de Kanban especializado para gestão de pedidos de hortifruti, com acompanhamento em tempo real desde a preparação até a entrega.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

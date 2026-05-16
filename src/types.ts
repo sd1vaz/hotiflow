@@ -42,7 +42,11 @@ export interface Order {
   createdAt: number;
   total: number;
   pdfUrl?: string;
+  preparingPhotoUrl?: string;
   deliveryPhotoUrl?: string;
+  boxCountPreparing?: number;
+  boxCountDelivered?: number;
+  aiError?: boolean;
   logs: AuditLog[];
 }
 
