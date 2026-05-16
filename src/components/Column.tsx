@@ -28,7 +28,7 @@ export default function Column({ column, onUpdateFile, onDeleteOrder, currentUse
   };
 
   return (
-    <div className="flex flex-col w-[85vw] md:w-72 shrink-0 h-full">
+    <div className="flex flex-col w-[calc(100vw-32px)] md:w-72 shrink-0 h-full">
       <div className="flex items-center justify-between mb-6 px-2">
         <h2 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
           <span className={cn("w-2 h-2 rounded-full", statusColors[column.id])} />

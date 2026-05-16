@@ -352,7 +352,7 @@ export default function KanbanBoard({ currentUser, users, onRegisterUser, onDele
       <main className="flex-1 p-4 md:p-6 flex gap-4 md:gap-6 overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none kanban-scroll bg-[radial-gradient(#d1fae5_1px,transparent_1px)] [background-size:32px_32px]">
         <DragDropContext onDragEnd={onDragEnd}>
           {filteredColumns.map((column: ColumnType) => (
-            <div key={column.id} className="snap-center h-full">
+            <div key={column.id} className="snap-start snap-always h-full">
               <Column 
                 column={column} 
                 onUpdateFile={updateOrderFile}
